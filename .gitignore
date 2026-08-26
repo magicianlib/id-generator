@@ -57,6 +57,9 @@ buildNumber.properties
 # Log file
 *.log
 
+# Runtime log directory (rolling archives)
+logs/
+
 # BlueJ files
 *.ctxt
 
