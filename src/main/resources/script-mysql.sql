@@ -38,7 +38,7 @@ create table `id_generator_db`.`id_segment`
     step           bigint unsigned default '1000'            not null comment '步阶',
     description    varchar(500)                              null comment '备注说明',
     created_at     datetime        default CURRENT_TIMESTAMP not null comment '创建时间(UTC)',
-    updated_at     datetime        default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间(UTC)',
+    updated_at     datetime        default CURRENT_TIMESTAMP null comment '更新时间(UTC)',
     constraint uk_biz_group_biz_tag
         unique (biz_group, biz_tag)
 )

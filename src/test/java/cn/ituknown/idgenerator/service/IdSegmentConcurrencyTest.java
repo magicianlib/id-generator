@@ -11,6 +11,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.annotation.Resource;
@@ -65,6 +66,11 @@ class IdSegmentConcurrencyTest {
     private JdbcTemplate jdbcTemplate;
 
     /**
+     * 当前连接的数据库产品名, 决定死锁指标读取口径
+     */
+    private String databaseProductName;
+
+    /**
      * 多线程同时领取号段区间: 区间两两不重叠、彼此无缝衔接、总跨度与库内推进值一致
      */
     @Test
@@ -76,7 +82,7 @@ class IdSegmentConcurrencyTest {
         IdSegmentPo before = idSegmentRepository.get(TEST_BIZ_GROUP, TEST_BIZ_TAG_REPOSITORY);
         long beforeMaxId = before.getCurrentMaxId();
         long step = before.getStep();
-        long deadlocksBefore = innodbDeadlockCount();
+        long deadlocksBefore = deadlockCount();
 
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         try {
@@ -109,7 +115,7 @@ class IdSegmentConcurrencyTest {
             IdSegmentPo after = idSegmentRepository.get(TEST_BIZ_GROUP, TEST_BIZ_TAG_REPOSITORY);
             assertEquals(ranges.get(ranges.size() - 1).getRight(), after.getCurrentMaxId(), "库内推进值应与最大区间右端一致");
             assertEquals(threads * step, after.getCurrentMaxId() - beforeMaxId, "总推进跨度应等于线程数乘步阶");
-            assertEquals(deadlocksBefore, innodbDeadlockCount(), "并发领取期间不应发生数据库死锁");
+            assertEquals(deadlocksBefore, deadlockCount(), "并发领取期间不应发生数据库死锁");
         } finally {
             pool.shutdownNow();
         }
@@ -127,7 +133,7 @@ class IdSegmentConcurrencyTest {
         int batchSize = 10;
 
         applyIfAbsent(TEST_BIZ_TAG_SERVICE);
-        long deadlocksBefore = innodbDeadlockCount();
+        long deadlocksBefore = deadlockCount();
 
         List<Long> issued = new CopyOnWriteArrayList<>();
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -172,7 +178,7 @@ class IdSegmentConcurrencyTest {
 
             IdSegmentPo after = idSegmentRepository.get(TEST_BIZ_GROUP, TEST_BIZ_TAG_SERVICE);
             assertTrue(after.getCurrentMaxId() >= sorted.get(sorted.size() - 1), "库内推进值不应小于已发出的最大号");
-            assertEquals(deadlocksBefore, innodbDeadlockCount(), "并发取号期间不应发生数据库死锁");
+            assertEquals(deadlocksBefore, deadlockCount(), "并发取号期间不应发生数据库死锁");
         } finally {
             pool.shutdownNow();
         }
@@ -221,11 +227,20 @@ class IdSegmentConcurrencyTest {
     }
 
     /**
-     * 读取数据库引擎的累计死锁次数
+     * 读取数据库引擎的累计死锁次数, 按当前数据库类型取对应引擎口径
      */
-    private long innodbDeadlockCount() {
+    private long deadlockCount() {
+        if (null == databaseProductName) {
+            databaseProductName = jdbcTemplate.execute(
+                    (ConnectionCallback<String>) connection -> connection.getMetaData().getDatabaseProductName());
+        }
+        if ("MySQL".equals(databaseProductName)) {
+            return jdbcTemplate.queryForObject(
+                    "select SUM_ERROR_RAISED from performance_schema.events_errors_summary_global_by_error where ERROR_NAME = 'ER_LOCK_DEADLOCK'",
+                    Long.class);
+        }
         return jdbcTemplate.queryForObject(
-                "select SUM_ERROR_RAISED from performance_schema.events_errors_summary_global_by_error where ERROR_NAME = 'ER_LOCK_DEADLOCK'",
+                "select deadlocks from pg_stat_database where datname = current_database()",
                 Long.class);
     }
 }

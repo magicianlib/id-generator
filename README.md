@@ -5,6 +5,7 @@
 ## 核心特性
 
 - **号段模式发号**: 数据库仅记录每个业务维度的已分配最大值与步阶, 取号走内存缓冲, 数据库交互频次约为步阶分之一
+- **双数据库支持**: 同时支持 MySQL 与 PostgreSQL, 通过 Spring profile 切换, 业务代码完全一致
 - **三级层级管理**: 业务组(bizGroup) → 业务名(bizTag) → 号段(segment) 逐级登记, 必须先申请业务组, 再申请业务名, 最后才能创建号段
 - **命名约束**: 业务组与业务名仅允许英文字母/数字/下划线/中划线(`^[a-zA-Z0-9_-]+$`), 最长 100 字符
 - **并发安全**: 数据库侧带原值校验的步阶推进, 多实例部署下天然保证区间不重叠; 业务组与业务名组合建唯一索引, 防止重复申请
@@ -13,7 +14,7 @@
 
 ## 表结构
 
-建表脚本位于 [script-mysql.sql](src/main/resources/script-mysql.sql), 共三张表, 分别对应业务组、业务名、号段三个层级:
+建表脚本按数据库提供: MySQL 用 [script-mysql.sql](src/main/resources/script-mysql.sql), PostgreSQL 用 [script-postgresql.sql](src/main/resources/script-postgresql.sql)。两套脚本共三张表, 分别对应业务组、业务名、号段三个层级:
 
 `id_group` 业务组表:
 
@@ -22,7 +23,7 @@
 | id | bigint | 自增主键 |
 | biz_group | varchar(100) | 业务组名, 唯一 |
 | description | varchar(500) | 备注说明 |
-| created_at / updated_at | datetime | 创建与更新时间(UTC) |
+| created_at / updated_at | datetime | 创建与更新时间(UTC), PostgreSQL 侧为 timestamptz 类型 |
 
 `id_tag` 业务名表:
 
@@ -32,7 +33,7 @@
 | biz_group | varchar(100) | 所属业务组 |
 | biz_tag | varchar(100) | 业务名, 与业务组组合唯一 |
 | description | varchar(500) | 备注说明 |
-| created_at / updated_at | datetime | 创建与更新时间(UTC) |
+| created_at / updated_at | datetime | 创建与更新时间(UTC), PostgreSQL 侧为 timestamptz 类型 |
 
 `id_segment` 号段表, 核心发号数据:
 
@@ -44,26 +45,34 @@
 | current_max_id | bigint unsigned | 当前已分配出去的最大 ID 值 |
 | step | bigint unsigned | 步阶, 每次申请新号段的区间长度, 默认 1000 |
 | description | varchar(500) | 备注说明 |
-| created_at / updated_at | datetime | 创建与更新时间(UTC) |
+| created_at / updated_at | datetime | 创建与更新时间(UTC), PostgreSQL 侧为 timestamptz 类型 |
 
-取号推进逻辑: 新号段区间为 (已分配最大值, 已分配最大值 + 步阶], 推进成功后已分配最大值增加一个步阶。
+取号推进逻辑: 新号段区间为 (已分配最大值, 已分配最大值 + 步阶], 推进成功后已分配最大值增加一个步阶, 同时由应用显式刷新更新时间(UTC), 不依赖数据库的自动刷新特性。
 
 ## 快速开始
 
-前置条件: JDK 8+, Maven, 本地 MySQL。
+前置条件: JDK 8+, Maven, 本地 MySQL 或 PostgreSQL。
 
-1. 执行建表脚本创建库与表:
+1. 执行对应数据库的建表脚本创建库与表:
 
 ```bash
+# MySQL
 mysql -uroot -p < src/main/resources/script-mysql.sql
+
+# PostgreSQL
+psql -h localhost -U admin -d postgres -f src/main/resources/script-postgresql.sql
 ```
 
-2. 按需修改 MySQL 连接配置, 见 [application-mysql.properties](src/main/resources/application-mysql.properties), 默认连接本机 3306 端口的 `id_generator_db` 库
+2. 通过 Spring profile 选择数据库, 默认 `mysql`。MySQL 连接配置见 [application-mysql.properties](src/main/resources/application-mysql.properties), PostgreSQL 连接配置见 [application-postgresql.properties](src/main/resources/application-postgresql.properties), 均默认连接本机的 `id_generator_db` 库
 
-3. 启动服务:
+3. 启动服务, 使用 PostgreSQL 时显式指定 profile:
 
 ```bash
+# MySQL(默认)
 mvn spring-boot:run
+
+# PostgreSQL
+mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
 ```
 
 ## API 说明
@@ -142,6 +151,8 @@ http://localhost:8080/api/common/takeSegment/10 \
 
 | 配置 | 默认值 | 说明 |
 | --- | --- | --- |
+| spring.profiles.active | mysql | 数据库选择, 可选 mysql 或 postgresql, 对应各自的连接配置文件 |
+| mybatis-plus.global-config.db-config.schema | (仅 postgresql 配置为 public) | PostgreSQL 侧显式限定表所属模式, MySQL 侧不配置 |
 | id.segment.default.init_id | 10000 | 申请新序列时缺省的初始已分配最大值 |
 | id.segment.default.step | 1000 | 申请新序列时缺省的步阶 |
 

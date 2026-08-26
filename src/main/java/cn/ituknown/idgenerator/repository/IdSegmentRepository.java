@@ -13,6 +13,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -89,7 +91,7 @@ public class IdSegmentRepository {
     }
 
     /**
-     * 领取下一档号段的可发号区间: 按已分配最大值加步阶推进, 带原值校验的更新失败时重试直至成功, 更新时间由数据库自动刷新
+     * 领取下一档号段的可发号区间: 按已分配最大值加步阶推进, 带原值校验的更新失败时重试直至成功, 推进时显式刷新更新时间(UTC)
      */
     public Pair<Long, Long> nextSegmentRange(String bizGroup, String bizTag) {
 
@@ -106,6 +108,7 @@ public class IdSegmentRepository {
 
             LambdaUpdateWrapper<IdSegmentPo> updateWrapper = new LambdaUpdateWrapper<>();
             updateWrapper.set(IdSegmentPo::getCurrentMaxId, newMaxId)
+                    .set(IdSegmentPo::getUpdatedAt, OffsetDateTime.now(ZoneOffset.UTC))
                     .eq(IdSegmentPo::getBizGroup, bizGroup)
                     .eq(IdSegmentPo::getBizTag, bizTag)
                     .eq(IdSegmentPo::getCurrentMaxId, current.getCurrentMaxId());
