@@ -12,7 +12,9 @@ import java.io.Serializable;
 @Getter
 @Setter
 @ToString
-public class TakeIdSegmentRequest implements Serializable {
+public class ApplyTagRequest implements Serializable {
+
+    private static final long serialVersionUID = 7153928064713258049L;
 
     /**
      * 所属业务组名, 仅允许英文字母/数字/下划线/中划线
@@ -29,4 +31,6 @@ public class TakeIdSegmentRequest implements Serializable {
     @Size(max = 100)
     @Pattern(regexp = "^[a-zA-Z0-9_-]+$")
     private String bizTag;
+
+    private String description;
 }

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 @Repository
 public class IdSegmentRepository {
     private static final String FIND_SEGMENT_FAILURE_MESSAGE = "cannot find `bizGroup`: '%s', `bizTag`: '%s', please apply first.";
+    private static final String FIND_TAG_FAILURE_MESSAGE = "cannot find `bizTag`: '%s' under `bizGroup`: '%s', please apply tag first.";
 
     @Value("${id.segment.default.init_id}")
     private Long idSegmentDefaultInitId;
@@ -28,6 +30,9 @@ public class IdSegmentRepository {
 
     @Resource
     private IdSegmentMapper idSegmentMapper;
+
+    @Resource
+    private IdTagRepository idTagRepository;
 
     @Resource
     private TransactionTemplate transactionTemplate;
@@ -41,7 +46,7 @@ public class IdSegmentRepository {
     }
 
     /**
-     * 申请新号段; 已存在同名号段时幂等返回, 入参缺省时以默认初始值和默认步阶补齐, 创建与更新时间由数据库生成
+     * 申请新号段; 所属业务组与业务名必须已登记, 已存在同名号段时幂等返回, 入参缺省时以默认初始值和默认步阶补齐, 创建与更新时间由数据库生成
      */
     public void apply(ApplyIdSegmentRequest request) {
         if (Objects.isNull(request.getCurrentMaxId())) {
@@ -55,6 +60,10 @@ public class IdSegmentRepository {
             return;
         }
 
+        if (Objects.isNull(idTagRepository.get(request.getBizGroup(), request.getBizTag()))) {
+            throw new RuntimeException(String.format(FIND_TAG_FAILURE_MESSAGE, request.getBizTag(), request.getBizGroup()));
+        }
+
         IdSegmentPo record = new IdSegmentPo();
         record.setBizGroup(request.getBizGroup());
         record.setBizTag(request.getBizTag());
@@ -62,11 +71,11 @@ public class IdSegmentRepository {
         record.setStep(request.getStep());
         record.setDescription(request.getDescription());
 
-        transactionTemplate.executeWithoutResult(tx -> {
-            if (get(request.getBizGroup(), request.getBizTag()) == null) {
-                idSegmentMapper.insert(record);
-            }
-        });
+        try {
+            idSegmentMapper.insert(record);
+        } catch (DuplicateKeyException e) {
+            // 并发申请同名业务段发生插入冲突, 说明他人已抢先登记, 视为幂等成功
+        }
     }
 
     /**

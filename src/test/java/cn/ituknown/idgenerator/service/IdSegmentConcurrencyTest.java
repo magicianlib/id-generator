@@ -1,8 +1,12 @@
 package cn.ituknown.idgenerator.service;
 
 import cn.ituknown.idgenerator.po.IdSegmentPo;
+import cn.ituknown.idgenerator.repository.IdGroupRepository;
 import cn.ituknown.idgenerator.repository.IdSegmentRepository;
+import cn.ituknown.idgenerator.repository.IdTagRepository;
+import cn.ituknown.idgenerator.request.ApplyGroupRequest;
 import cn.ituknown.idgenerator.request.ApplyIdSegmentRequest;
+import cn.ituknown.idgenerator.request.ApplyTagRequest;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -24,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -46,6 +51,12 @@ class IdSegmentConcurrencyTest {
 
     @Resource
     private CommonIdSegmentService commonIdSegmentService;
+
+    @Resource
+    private IdGroupRepository idGroupRepository;
+
+    @Resource
+    private IdTagRepository idTagRepository;
 
     @Resource
     private IdSegmentRepository idSegmentRepository;
@@ -168,9 +179,38 @@ class IdSegmentConcurrencyTest {
     }
 
     /**
-     * 确保验证专用号段存在, 已存在时幂等跳过
+     * 层级约束: 业务组未登记时申请业务名应被拒绝, 业务名未登记时申请号段应被拒绝
+     */
+    @Test
+    @Timeout(30)
+    void applyRequiresRegisteredParent() {
+        ApplyTagRequest tagRequest = new ApplyTagRequest();
+        tagRequest.setBizGroup("groupNotExists");
+        tagRequest.setBizTag("tagAny");
+        assertThrows(RuntimeException.class, () -> idTagRepository.apply(tagRequest), "业务组未登记时申请业务名应被拒绝");
+
+        applyIfAbsent(TEST_BIZ_TAG_REPOSITORY);
+        ApplyIdSegmentRequest segmentRequest = new ApplyIdSegmentRequest();
+        segmentRequest.setBizGroup(TEST_BIZ_GROUP);
+        segmentRequest.setBizTag("tagNotExists");
+        assertThrows(RuntimeException.class, () -> idSegmentRepository.apply(segmentRequest), "业务名未登记时申请号段应被拒绝");
+    }
+
+    /**
+     * 确保验证专用号段存在, 按业务组、业务名、号段的申请顺序逐级登记, 已存在时幂等跳过
      */
     private void applyIfAbsent(String bizTag) {
+        ApplyGroupRequest groupRequest = new ApplyGroupRequest();
+        groupRequest.setBizGroup(TEST_BIZ_GROUP);
+        groupRequest.setDescription("并发验证专用业务组");
+        idGroupRepository.apply(groupRequest);
+
+        ApplyTagRequest tagRequest = new ApplyTagRequest();
+        tagRequest.setBizGroup(TEST_BIZ_GROUP);
+        tagRequest.setBizTag(bizTag);
+        tagRequest.setDescription("并发验证专用号段");
+        idTagRepository.apply(tagRequest);
+
         ApplyIdSegmentRequest request = new ApplyIdSegmentRequest();
         request.setBizGroup(TEST_BIZ_GROUP);
         request.setBizTag(bizTag);
