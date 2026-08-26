@@ -7,12 +7,11 @@ import lombok.ToString;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
-import java.io.Serializable;
 
 @Getter
 @Setter
 @ToString
-public class ApplyTagRequest implements Serializable {
+public class ApplyTagRequest extends AbstractRequest {
 
     private static final long serialVersionUID = 7153928064713258049L;
 

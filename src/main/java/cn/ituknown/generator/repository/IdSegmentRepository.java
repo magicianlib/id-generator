@@ -4,8 +4,11 @@ import cn.ituknown.generator.mapper.IdSegmentMapper;
 import cn.ituknown.generator.model.IdSegmentKey;
 import cn.ituknown.generator.po.IdSegmentPo;
 import cn.ituknown.generator.request.ApplyIdSegmentRequest;
+import cn.ituknown.generator.request.PageSegmentRequest;
+import cn.ituknown.generator.result.Page;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
@@ -88,6 +91,20 @@ public class IdSegmentRepository {
                 .map(po -> new IdSegmentKey(po.getBizGroup(), po.getBizTag()))
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 分页查询已申请号段, 业务组与业务名条件存在时精确匹配, 结果按登记顺序排列
+     */
+    public Page<IdSegmentPo> page(PageSegmentRequest request) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<IdSegmentPo> recordPage =
+                new LambdaQueryChainWrapper<>(idSegmentMapper)
+                        .eq(StringUtils.isNotBlank(request.getBizGroup()), IdSegmentPo::getBizGroup, request.getBizGroup())
+                        .eq(StringUtils.isNotBlank(request.getBizTag()), IdSegmentPo::getBizTag, request.getBizTag())
+                        .orderByAsc(IdSegmentPo::getId)
+                        .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getCurrent(), request.getPageSize()));
+
+        return Page.of(recordPage.getRecords(), request.getCurrent(), request.getPageSize(), recordPage.getTotal());
     }
 
     /**

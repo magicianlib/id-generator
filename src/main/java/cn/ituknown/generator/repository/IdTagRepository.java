@@ -3,7 +3,10 @@ package cn.ituknown.generator.repository;
 import cn.ituknown.generator.mapper.IdTagMapper;
 import cn.ituknown.generator.po.IdTagPo;
 import cn.ituknown.generator.request.ApplyTagRequest;
+import cn.ituknown.generator.request.PageTagRequest;
+import cn.ituknown.generator.result.Page;
 import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
@@ -51,5 +54,19 @@ public class IdTagRepository {
         } catch (DuplicateKeyException e) {
             // 并发申请同名业务标签发生插入冲突, 说明他人已抢先登记, 视为幂等成功
         }
+    }
+
+    /**
+     * 分页查询业务标签, 所属业务组条件存在时精确匹配, 业务名条件存在时模糊匹配, 结果按登记顺序排列
+     */
+    public Page<IdTagPo> page(PageTagRequest request) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<IdTagPo> recordPage =
+                new LambdaQueryChainWrapper<>(idTagMapper)
+                        .eq(StringUtils.isNotBlank(request.getBizGroup()), IdTagPo::getBizGroup, request.getBizGroup())
+                        .like(StringUtils.isNotBlank(request.getBizTag()), IdTagPo::getBizTag, request.getBizTag())
+                        .orderByAsc(IdTagPo::getId)
+                        .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getCurrent(), request.getPageSize()));
+
+        return Page.of(recordPage.getRecords(), request.getCurrent(), request.getPageSize(), recordPage.getTotal());
     }
 }

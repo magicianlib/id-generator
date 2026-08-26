@@ -6,8 +6,15 @@ import cn.ituknown.generator.repository.IdTagRepository;
 import cn.ituknown.generator.request.ApplyGroupRequest;
 import cn.ituknown.generator.request.ApplyIdSegmentRequest;
 import cn.ituknown.generator.request.ApplyTagRequest;
+import cn.ituknown.generator.request.PageGroupRequest;
+import cn.ituknown.generator.request.PageSegmentRequest;
+import cn.ituknown.generator.request.PageTagRequest;
 import cn.ituknown.generator.request.TakeIdSegmentRequest;
+import cn.ituknown.generator.result.Page;
 import cn.ituknown.generator.result.Result;
+import cn.ituknown.generator.po.IdGroupPo;
+import cn.ituknown.generator.po.IdSegmentPo;
+import cn.ituknown.generator.po.IdTagPo;
 import cn.ituknown.generator.service.CommonIdSegmentService;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -61,6 +68,30 @@ public class CommonIdSegmentController {
     public Result<Void> applySegment(@Validated @RequestBody ApplyIdSegmentRequest request) {
         idSegmentRepository.apply(request);
         return Result.success();
+    }
+
+    /**
+     * 分页查询业务组, 业务组名条件存在时模糊匹配
+     */
+    @PostMapping("/pageGroup")
+    public Result<Page<IdGroupPo>> pageGroup(@Validated @RequestBody PageGroupRequest request) {
+        return Result.success(idGroupRepository.page(request));
+    }
+
+    /**
+     * 分页查询业务标签, 所属业务组条件存在时精确匹配, 业务名条件存在时模糊匹配
+     */
+    @PostMapping("/pageTag")
+    public Result<Page<IdTagPo>> pageTag(@Validated @RequestBody PageTagRequest request) {
+        return Result.success(idTagRepository.page(request));
+    }
+
+    /**
+     * 分页查询已申请号段, 业务组与业务名条件存在时精确匹配
+     */
+    @PostMapping("/pageSegment")
+    public Result<Page<IdSegmentPo>> pageSegment(@Validated @RequestBody PageSegmentRequest request) {
+        return Result.success(idSegmentRepository.page(request));
     }
 
     @PostMapping("/takeSegment")
