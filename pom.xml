@@ -10,10 +10,8 @@
     </parent>
 
     <groupId>cn.ituknown</groupId>
-    <artifactId>uniqueseq-generater</artifactId>
+    <artifactId>id-generator</artifactId>
     <version>${revision}</version>
-    <name>uniqueseq-generater</name>
-    <description>uniqueseq-generater</description>
 
     <properties>
         <java.version>8</java.version>
