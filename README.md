@@ -1,4 +1,6 @@
-# id-generator
+# uniqueseq-generater
+
+![Java](https://img.shields.io/badge/Java-8-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7.13-brightgreen) ![Database](https://img.shields.io/badge/DB-MySQL%20%7C%20PostgreSQL-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 全局唯一 ID 序列生成器, 基于号段(segment)模式实现。服务为每个业务维度维护一段连续可发的 ID 区间, 业务方每次取号直接从内存缓冲中获取, 仅在号段耗尽时才访问数据库申请新号段, 以极低的数据库压力支撑高频发号。
 
@@ -11,6 +13,32 @@
 - **并发安全**: 数据库侧带原值校验的步阶推进, 多实例部署下天然保证区间不重叠; 业务组与业务名组合建唯一索引, 防止重复申请
 - **余量预取**: 每个序列的缓冲区维持在安全下限与上限之间, 余量不足时异步补充, 避免取号请求阻塞在数据库上
 - **动态感知**: 定时同步已申请序列, 新申请的序列自动进入发号缓存, 废弃的序列自动移除
+
+## 快速开始
+
+前置条件: JDK 8+, Maven, 本地 MySQL 或 PostgreSQL。
+
+1. 执行对应数据库的建表脚本创建库与表:
+
+```bash
+# MySQL
+mysql -uroot -p < src/main/resources/script-mysql.sql
+
+# PostgreSQL
+psql -h localhost -U admin -d postgres -f src/main/resources/script-postgresql.sql
+```
+
+2. 通过 Spring profile 选择数据库, 默认 `mysql`。MySQL 连接配置见 [application-mysql.properties](src/main/resources/application-mysql.properties), PostgreSQL 连接配置见 [application-postgresql.properties](src/main/resources/application-postgresql.properties), 均默认连接本机的 `id_generator_db` 库
+
+3. 启动服务, 使用 PostgreSQL 时显式指定 profile:
+
+```bash
+# MySQL(默认)
+mvn spring-boot:run
+
+# PostgreSQL
+mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
+```
 
 ## 表结构
 
@@ -48,32 +76,6 @@
 | created_at / updated_at | datetime | 创建与更新时间(UTC), PostgreSQL 侧为 timestamptz 类型 |
 
 取号推进逻辑: 新号段区间为 (已分配最大值, 已分配最大值 + 步阶], 推进成功后已分配最大值增加一个步阶, 同时由应用显式刷新更新时间(UTC), 不依赖数据库的自动刷新特性。
-
-## 快速开始
-
-前置条件: JDK 8+, Maven, 本地 MySQL 或 PostgreSQL。
-
-1. 执行对应数据库的建表脚本创建库与表:
-
-```bash
-# MySQL
-mysql -uroot -p < src/main/resources/script-mysql.sql
-
-# PostgreSQL
-psql -h localhost -U admin -d postgres -f src/main/resources/script-postgresql.sql
-```
-
-2. 通过 Spring profile 选择数据库, 默认 `mysql`。MySQL 连接配置见 [application-mysql.properties](src/main/resources/application-mysql.properties), PostgreSQL 连接配置见 [application-postgresql.properties](src/main/resources/application-postgresql.properties), 均默认连接本机的 `id_generator_db` 库
-
-3. 启动服务, 使用 PostgreSQL 时显式指定 profile:
-
-```bash
-# MySQL(默认)
-mvn spring-boot:run
-
-# PostgreSQL
-mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
-```
 
 ## API 说明
 
@@ -149,22 +151,53 @@ http://localhost:8080/api/common/takeSegment/10 \
 
 ## 性能压测
 
-压测工具与详细使用说明见 [benchmark](benchmark/README.md), 包含吞吐压测与取号正确性校验两类工具。
+压测工具与详细使用说明见 [benchmark](benchmark/README.md), 包含吞吐压测与取号正确性校验两类工具, 均为单文件 Java 程序。
 
-本机实测数据(8 核 MacBook, JDK 8, 服务端与压测器同机互相争抢 CPU, 桌面环境有其他负载, 属保守口径):
+测试环境: 8 核 MacBook, JDK 8, 服务端与压测器同机互相争抢 CPU, 桌面环境有其他负载, 以下数据属保守口径; 独立压测机(服务端独占 CPU)按瓶颈分析推算可达 2.2 万 QPS 以上。
 
-| 场景 | 结果 |
+### PostgreSQL
+
+```mermaid
+xychart-beta
+    title "PostgreSQL 取号吞吐(号/秒, 64线程长连接)"
+    x-axis ["单号接口", "批量接口(10号/请求)"]
+    y-axis "号/秒" 0 --> 80000
+    bar [14193, 68670]
+```
+
+- 单号接口: 14193 QPS, 零失败
+- 批量接口: 6867 请求/秒, 约 6.87 万号/秒
+- 批量不足额: 20.6 万请求中 2 例(约 0.001%), 有界降级, 返回的号本身正确
+
+### MySQL
+
+```mermaid
+xychart-beta
+    title "MySQL 取号吞吐(号/秒, 32线程长连接)"
+    x-axis ["单号接口", "批量接口(10号/请求)"]
+    y-axis "号/秒" 0 --> 80000
+    bar [10935, 59000]
+```
+
+- 单号接口: 10935 QPS(压测连接池未解锁口径, 属保守值), 零失败
+- 批量接口: 5900 请求/秒, 约 5.9 万号/秒
+- 批量不足额: 24.4 万请求中 10 例(约 0.004%), 有界降级, 返回的号本身正确
+
+### 正确性校验
+
+两种数据库各做单号与批量两轮全量校验, 合计约 119 万个号:
+
+| 校验项 | 结果 |
 | --- | --- |
-| 单号取号(64 线程长连接) | 14193 QPS, 零失败 |
-| 批量取号(10 号/请求, 64 线程) | 6867 请求/秒, 约 6.87 万号/秒, 不足额 2 / 20.6 万请求 |
-| 取号正确性(双库各单号+批量全量校验) | 合计 119 万号, 零重复, 零跳号, 首号精确衔接 |
-| 数据库推进守恒 | 库内推进值对齐段边界且覆盖全部已发出号 |
+| 首号衔接(与库内推进值/上轮末号) | 全部精确衔接 |
+| 重复号 | 0 |
+| 跳号 | 0 |
+| 数据库推进守恒 | 推进值对齐段边界且覆盖全部已发出号 |
+| 服务端异常日志 | 0 |
 
-MySQL 与 PostgreSQL 两种 profile 的吞吐在同一量级(1.1 万 ~ 1.4 万 QPS), 差异主要来自环境波动而非数据库引擎。
+### 瓶颈定位结论
 
-瓶颈定位结论: 每请求约 0.3ms CPU 全部消耗在 Web 层请求管道, 取号缓存逻辑(读写锁与原子变量)不构成热点; 同机压测下服务端仅分得约 4.3 核, 独立压测机(服务端独占 CPU)按此推算可达 2.2 万 QPS 以上。批量取号接口可将每号成本摊薄一个数量级, 是提升取号吞吐的首选方式。
-
-批量不足额说明: 极端高压下存在约十万分之几的请求返回数量不足(如请求 10 个返回 9 个), 这是同步兜底策略的有界降级, 保证不阻塞调用方, 返回的号本身仍然正确。
+每请求约 0.3ms CPU 全部消耗在 Web 层请求管道, 取号缓存逻辑(读写锁与原子变量)不构成热点; 同机压测下服务端仅分得约 4.3 核。批量取号接口可将每号成本摊薄一个数量级, 是提升取号吞吐的首选方式; 更高吞吐可通过多实例水平扩展获得, 号段模式天然支持。
 
 ## 配置项
 
