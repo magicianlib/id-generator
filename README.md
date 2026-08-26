@@ -1,4 +1,4 @@
-# uniqueseq-generater
+# id-generator
 
 ![Java](https://img.shields.io/badge/Java-8-orange) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7.13-brightgreen) ![Database](https://img.shields.io/badge/DB-MySQL%20%7C%20PostgreSQL-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
