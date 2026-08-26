@@ -1,8 +1,8 @@
 -- 库
 create database id_generator_db;
 
--- 后续建表必须落在新库, 需要显式切换连接
-\connect id_generator_db;
+-- 先进入库, 再执行后续 sql
+-- connect id_generator_db;
 
 --
 -- 表 public.id_group
@@ -12,7 +12,7 @@ create table public.id_group
     id          bigserial
         constraint id_group_pk
             primary key,
-    biz_group   varchar(100) not null,
+    biz_group   text not null,
     description text,
     created_at  timestamptz default now(),
     updated_at  timestamptz default now()
@@ -29,15 +29,15 @@ create unique index id_group_biz_group_uindex
     on public.id_group (biz_group);
 
 --
--- 表 public.id_tag
+-- 表 public.id_group
 --
 create table public.id_tag
 (
     id          bigserial
         constraint id_tag_pk
             primary key,
-    biz_group   varchar(100) not null,
-    biz_tag     varchar(100) not null,
+    biz_group   text not null,
+    biz_tag     text not null,
     description text,
     created_at  timestamptz default now(),
     updated_at  timestamptz default now()
@@ -63,8 +63,8 @@ create table public.id_segment
     id             bigserial
         constraint id_segment_pk
             primary key,
-    biz_group      varchar(100)             not null,
-    biz_tag        varchar(100)             not null,
+    biz_group      text                     not null,
+    biz_tag        text                     not null,
     current_max_id bigint      default 0    not null,
     step           bigint      default 1000 not null,
     description    text,
@@ -77,9 +77,9 @@ comment on column public.id_segment.biz_group is '业务组';
 comment on column public.id_segment.biz_tag is '业务名';
 comment on column public.id_segment.current_max_id is '当前已分配出去的最大 ID 值';
 comment on column public.id_segment.step is '步阶';
-comment on column public.id_segment.description is '备注说明';
-comment on column public.id_segment.created_at is '创建时间';
-comment on column public.id_segment.updated_at is '更新时间';
+comment on column public.id_tag.description is '备注说明';
+comment on column public.id_tag.created_at is '创建时间';
+comment on column public.id_tag.updated_at is '更新时间';
 
 create unique index id_segment_biz_group__uindex
     on public.id_segment (biz_group, biz_tag);

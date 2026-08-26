@@ -1,6 +1,6 @@
-create schema `id_generator_db` collate utf8mb4_bin;
+create schema id_generator_db collate utf8mb4_bin;
 
-create table `id_generator_db`.`id_group`
+create table id_generator_db.id_group
 (
     id          bigint auto_increment comment '主键ID'
         primary key,
@@ -13,7 +13,7 @@ create table `id_generator_db`.`id_group`
 )
     comment '业务组' charset = utf8mb4;
 
-create table `id_generator_db`.`id_tag`
+create table id_generator_db.id_tag
 (
     id          bigint auto_increment comment '主键ID'
         primary key,
@@ -28,7 +28,7 @@ create table `id_generator_db`.`id_tag`
     comment '业务标签' charset = utf8mb4;
 
 
-create table `id_generator_db`.`id_segment`
+create table id_generator_db.id_segment
 (
     id             bigint auto_increment comment '主键'
         primary key,
