@@ -34,7 +34,7 @@ class IdGeneratorApplicationTests {
     void seqtake() throws Exception {
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders
-                .post("/api/common/takeSegment")
+                .post("/api/common/take-segment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"bizGroup\":\"" + TEST_BIZ_GROUP + "\",\"bizTag\":\"" + TEST_BIZ_TAG + "\"}");
 
@@ -51,7 +51,7 @@ class IdGeneratorApplicationTests {
     void seqtakeN() throws Exception {
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders
-                .post("/api/common/takeSegment/{n}", 10)
+                .post("/api/common/take-segment/{n}", 10)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"bizGroup\":\"" + TEST_BIZ_GROUP + "\",\"bizTag\":\"" + TEST_BIZ_TAG + "\"}");
 
@@ -72,7 +72,7 @@ class IdGeneratorApplicationTests {
 
         for (String illegal : new String[]{"订单", "main tag", "order.1", "tag!"}) {
             MockHttpServletRequestBuilder request = MockMvcRequestBuilders
-                    .post("/api/common/takeSegment")
+                    .post("/api/common/take-segment")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"bizGroup\":\"" + illegal + "\",\"bizTag\":\"" + illegal + "\"}");
 
@@ -83,7 +83,7 @@ class IdGeneratorApplicationTests {
 
         // 下划线与中划线属于合法命名, 应通过校验进入业务处理
         MockHttpServletRequestBuilder legal = MockMvcRequestBuilders
-                .post("/api/common/takeSegment")
+                .post("/api/common/take-segment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"bizGroup\":\"order-1\",\"bizTag\":\"main_tag\"}");
 
@@ -98,7 +98,7 @@ class IdGeneratorApplicationTests {
     void applySegmentWithUnregisteredTag() throws Exception {
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders
-                .post("/api/common/applySegment")
+                .post("/api/common/apply-segment")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"bizGroup\":\"" + TEST_BIZ_GROUP + "\",\"bizTag\":\"tagNotExists\"}");
 

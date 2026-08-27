@@ -48,7 +48,7 @@ class CommonIdSegmentControllerPageTest {
         }
 
         // 业务组分页: 按前缀模糊命中 3 个组, 每页 2 条
-        mockMvc.perform(post("/api/common/pageGroup")
+        mockMvc.perform(post("/api/common/page-group")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"current\":1,\"pageSize\":2,\"bizGroup\":\"" + prefix + "\"}"))
                 .andExpect(status().isOk())
@@ -58,7 +58,7 @@ class CommonIdSegmentControllerPageTest {
                 .andExpect(jsonPath("$.data.list.length()").value(2));
 
         // 标签分页: 按所属组精确加名称模糊命中 3 个标签
-        mockMvc.perform(post("/api/common/pageTag")
+        mockMvc.perform(post("/api/common/page-tag")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"current\":1,\"pageSize\":2,\"bizGroup\":\"" + ownerGroup + "\",\"bizTag\":\"" + prefix + "\"}"))
                 .andExpect(status().isOk())
@@ -67,7 +67,7 @@ class CommonIdSegmentControllerPageTest {
                 .andExpect(jsonPath("$.data.list.length()").value(2));
 
         // 号段分页: 按所属组精确命中 3 个号段
-        mockMvc.perform(post("/api/common/pageSegment")
+        mockMvc.perform(post("/api/common/page-segment")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"current\":2,\"pageSize\":2,\"bizGroup\":\"" + ownerGroup + "\"}"))
                 .andExpect(status().isOk())

@@ -24,15 +24,15 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
 2. 申请压测专用序列(按层级逐级申请, 已存在时幂等):
 
 ```bash
-curl -X POST http://localhost:8080/api/common/applyGroup \
+curl -X POST http://localhost:8080/api/common/apply-group \
   --header 'Content-Type: application/json' \
   -d '{"bizGroup":"commons","description":"压测业务组"}'
 
-curl -X POST http://localhost:8080/api/common/applyTag \
+curl -X POST http://localhost:8080/api/common/apply-tag \
   --header 'Content-Type: application/json' \
   -d '{"bizGroup":"commons","bizTag":"benchmark","description":"压测序列"}'
 
-curl -X POST http://localhost:8080/api/common/applySegment \
+curl -X POST http://localhost:8080/api/common/apply-segment \
   --header 'Content-Type: application/json' \
   -d '{"bizGroup":"commons","bizTag":"benchmark","description":"压测序列"}'
 ```
@@ -49,12 +49,12 @@ javac ThroughputBench.java StrictBench.java
 ```bash
 # 单号取号, 64 线程持续 30 秒
 java -Dhttp.maxConnections=256 ThroughputBench \
-  /api/common/takeSegment \
+  /api/common/take-segment \
   '{"bizGroup":"commons","bizTag":"benchmark"}' 64 30
 
 # 批量取号, 每请求 10 个号, 并统计批量不足额请求数
 java -Dhttp.maxConnections=256 ThroughputBench \
-  /api/common/takeSegment/10 \
+  /api/common/take-segment/10 \
   '{"bizGroup":"commons","bizTag":"benchmark"}' 64 30 10
 ```
 
@@ -63,7 +63,7 @@ java -Dhttp.maxConnections=256 ThroughputBench \
 输出示例:
 
 ```
-path=/api/common/takeSegment threads=64 ok=283856 fail=0 shortBatch=0 qps=14193 meanLatencyMs=4.50
+path=/api/common/take-segment threads=64 ok=283856 fail=0 shortBatch=0 qps=14193 meanLatencyMs=4.50
 ```
 
 - `qps`: 每秒完成请求数
@@ -91,7 +91,7 @@ mysql -uroot -p -e "select current_max_id + 1 from \`id_generator_db\`.\`id_segm
 
 ```bash
 java -Dhttp.maxConnections=256 StrictBench \
-  /api/common/takeSegment \
+  /api/common/take-segment \
   '{"bizGroup":"commons","bizTag":"benchmark"}' 32 15 2420001
 ```
 

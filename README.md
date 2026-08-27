@@ -85,12 +85,12 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
 
 ### 申请业务组
 
-`POST /api/common/applyGroup`
+`POST /api/common/apply-group`
 
 ```bash
 $ curl \
 --request POST \
-http://localhost:8080/api/common/applyGroup \
+http://localhost:8080/api/common/apply-group \
 --header 'Content-Type: application/json' \
 -d '{"bizGroup":"order","description":"订单业务"}'
 ```
@@ -99,12 +99,12 @@ http://localhost:8080/api/common/applyGroup \
 
 ### 申请业务名
 
-`POST /api/common/applyTag`，所属业务组必须已申请：
+`POST /api/common/apply-tag`，所属业务组必须已申请：
 
 ```bash
 $ curl \
 --request POST \
-http://localhost:8080/api/common/applyTag \
+http://localhost:8080/api/common/apply-tag \
 --header 'Content-Type: application/json' \
 -d '{"bizGroup":"order","bizTag":"main","description":"订单主表ID"}'
 ```
@@ -113,38 +113,78 @@ http://localhost:8080/api/common/applyTag \
 
 ### 申请新序列
 
-`POST /api/common/applySegment`，所属业务组与业务名必须均已申请：
+`POST /api/common/apply-segment`，所属业务组与业务名必须均已申请：
 
 ```bash
 $ curl \
 --request POST \
-http://localhost:8080/api/common/applySegment \
+http://localhost:8080/api/common/apply-segment \
 --header 'Content-Type: application/json' \
 -d '{"bizGroup":"order","bizTag":"main","currentMaxId":10000,"step":1000,"description":"订单主表ID"}'
 ```
 
 `currentMaxId` 与 `step` 可省略，缺省时使用配置的默认初始值（10000）与默认步阶（1000）。同名序列已存在时幂等返回，不会重复创建。新申请的序列会在一个同步周期（默认 10 秒）后进入发号缓存。
 
-### 取 1 个 ID
+### 分页查询业务组
 
-`POST /api/common/takeSegment`
+`POST /api/common/page-group`，`bizGroup` 可省略，省略时查全量，条件为模糊匹配：
 
 ```bash
 $ curl \
 --request POST \
-http://localhost:8080/api/common/takeSegment \
+http://localhost:8080/api/common/page-group \
+--header 'Content-Type: application/json' \
+-d '{"current":1,"pageSize":10,"bizGroup":"order"}'
+```
+
+`data` 内为 `list`（当前页数据）与 `pagination`（`total` 总条数、`pages` 总页数、`current` 当前页码、`pageSize` 每页数量），结果按登记顺序排列。
+
+### 分页查询业务名
+
+`POST /api/common/page-tag`，`bizGroup` 为精确匹配，`bizTag` 为模糊匹配，均可省略：
+
+```bash
+$ curl \
+--request POST \
+http://localhost:8080/api/common/page-tag \
+--header 'Content-Type: application/json' \
+-d '{"current":1,"pageSize":10,"bizGroup":"order","bizTag":"main"}'
+```
+
+### 分页查询序列
+
+`POST /api/common/page-segment`，`bizGroup` 与 `bizTag` 均为精确匹配，均可省略：
+
+```bash
+$ curl \
+--request POST \
+http://localhost:8080/api/common/page-segment \
+--header 'Content-Type: application/json' \
+-d '{"current":1,"pageSize":10,"bizGroup":"order"}'
+```
+
+返回的每条记录包含已分配最大值、步阶与备注说明，可用于管控台巡检号段水位。
+
+### 取 1 个 ID
+
+`POST /api/common/take-segment`
+
+```bash
+$ curl \
+--request POST \
+http://localhost:8080/api/common/take-segment \
 --header 'Content-Type: application/json' \
 -d '{"bizGroup":"order","bizTag":"main"}'
 ```
 
 ### 取 N 个 ID
 
-`POST /api/common/takeSegment/{n}`，n 为本次申请的 ID 数量，必须大于 0：
+`POST /api/common/take-segment/{n}`，n 为本次申请的 ID 数量，必须大于 0：
 
 ```bash
 $ curl \
 --request POST \
-http://localhost:8080/api/common/takeSegment/10 \
+http://localhost:8080/api/common/take-segment/10 \
 --header 'Content-Type: application/json' \
 -d '{"bizGroup":"order","bizTag":"main"}'
 ```

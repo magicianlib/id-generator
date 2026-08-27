@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.*;
  *
  * 运行示例:
  *   javac StrictBench.java
- *   java -Dhttp.maxConnections=256 StrictBench /api/common/takeSegment '{"bizGroup":"commons","bizTag":"benchmark"}' 32 15 2420001
+ *   java -Dhttp.maxConnections=256 StrictBench /api/common/take-segment '{"bizGroup":"commons","bizTag":"benchmark"}' 32 15 2420001
  *
  * 注意: 必须加 -Dhttp.maxConnections, 理由同吞吐压测工具
  */

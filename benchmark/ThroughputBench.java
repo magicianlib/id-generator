@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.*;
  * 客户端开销已尽量压缩(连接复用、响应轻量解析), 用于逼近服务端真实容量
  *
  * 参数: path body threads seconds [batchSize]
- *   path       接口路径, 如 /api/common/takeSegment 或 /api/common/takeSegment/10
+ *   path       接口路径, 如 /api/common/take-segment 或 /api/common/take-segment/10
  *   body       请求体, 如 {"bizGroup":"commons","bizTag":"benchmark"}
  *   threads    并发线程数
  *   seconds    持续时长(秒)
@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.*;
  *
  * 运行示例:
  *   javac ThroughputBench.java
- *   java -Dhttp.maxConnections=256 ThroughputBench /api/common/takeSegment/10 '{"bizGroup":"commons","bizTag":"benchmark"}' 64 30 10
+ *   java -Dhttp.maxConnections=256 ThroughputBench /api/common/take-segment/10 '{"bizGroup":"commons","bizTag":"benchmark"}' 64 30 10
  *
  * 注意: 必须加 -Dhttp.maxConnections, JDK 长连接池默认每主机仅 5 条连接, 不加会把吞吐压在假瓶颈上
  */
