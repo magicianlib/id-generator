@@ -64,7 +64,7 @@ public class IdTagRepository {
                 new LambdaQueryChainWrapper<>(idTagMapper)
                         .eq(StringUtils.isNotBlank(request.getBizGroup()), IdTagPo::getBizGroup, request.getBizGroup())
                         .like(StringUtils.isNotBlank(request.getBizTag()), IdTagPo::getBizTag, request.getBizTag())
-                        .orderByAsc(IdTagPo::getId)
+                        .orderByDesc(IdTagPo::getId)
                         .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getCurrent(), request.getPageSize()));
 
         return Page.of(recordPage.getRecords(), request.getCurrent(), request.getPageSize(), recordPage.getTotal());

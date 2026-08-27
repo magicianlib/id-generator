@@ -110,7 +110,7 @@ public class IdSegmentRepository {
                 new LambdaQueryChainWrapper<>(idSegmentMapper)
                         .eq(StringUtils.isNotBlank(request.getBizGroup()), IdSegmentPo::getBizGroup, request.getBizGroup())
                         .eq(StringUtils.isNotBlank(request.getBizTag()), IdSegmentPo::getBizTag, request.getBizTag())
-                        .orderByAsc(IdSegmentPo::getId)
+                        .orderByDesc(IdSegmentPo::getId)
                         .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getCurrent(), request.getPageSize()));
 
         return Page.of(recordPage.getRecords(), request.getCurrent(), request.getPageSize(), recordPage.getTotal());

@@ -52,7 +52,7 @@ public class IdGroupRepository {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<IdGroupPo> recordPage =
                 new LambdaQueryChainWrapper<>(idGroupMapper)
                         .like(StringUtils.isNotBlank(request.getBizGroup()), IdGroupPo::getBizGroup, request.getBizGroup())
-                        .orderByAsc(IdGroupPo::getId)
+                        .orderByDesc(IdGroupPo::getId)
                         .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(request.getCurrent(), request.getPageSize()));
 
         return Page.of(recordPage.getRecords(), request.getCurrent(), request.getPageSize(), recordPage.getTotal());
