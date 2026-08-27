@@ -1,8 +1,8 @@
 package cn.ituknown.generator.controller;
 
-import cn.ituknown.generator.repository.IdGroupRepository;
-import cn.ituknown.generator.repository.IdSegmentRepository;
-import cn.ituknown.generator.repository.IdTagRepository;
+import cn.ituknown.generator.po.IdGroupPo;
+import cn.ituknown.generator.po.IdSegmentPo;
+import cn.ituknown.generator.po.IdTagPo;
 import cn.ituknown.generator.request.ApplyGroupRequest;
 import cn.ituknown.generator.request.ApplyIdSegmentRequest;
 import cn.ituknown.generator.request.ApplyTagRequest;
@@ -12,10 +12,8 @@ import cn.ituknown.generator.request.PageTagRequest;
 import cn.ituknown.generator.request.TakeIdSegmentRequest;
 import cn.ituknown.generator.result.Page;
 import cn.ituknown.generator.result.Result;
-import cn.ituknown.generator.po.IdGroupPo;
-import cn.ituknown.generator.po.IdSegmentPo;
-import cn.ituknown.generator.po.IdTagPo;
 import cn.ituknown.generator.service.CommonIdSegmentService;
+import cn.ituknown.generator.service.IdSegmentManageService;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -35,20 +33,14 @@ public class CommonIdSegmentController {
     private CommonIdSegmentService commonIdSegmentService;
 
     @Resource
-    private IdGroupRepository idGroupRepository;
-
-    @Resource
-    private IdTagRepository idTagRepository;
-
-    @Resource
-    private IdSegmentRepository idSegmentRepository;
+    private IdSegmentManageService idSegmentManageService;
 
     /**
      * 申请新业务组, 同名业务组已存在时幂等返回
      */
     @PostMapping("/applyGroup")
     public Result<Void> applyGroup(@Validated @RequestBody ApplyGroupRequest request) {
-        idGroupRepository.apply(request);
+        idSegmentManageService.applyGroup(request);
         return Result.success();
     }
 
@@ -57,7 +49,7 @@ public class CommonIdSegmentController {
      */
     @PostMapping("/applyTag")
     public Result<Void> applyTag(@Validated @RequestBody ApplyTagRequest request) {
-        idTagRepository.apply(request);
+        idSegmentManageService.applyTag(request);
         return Result.success();
     }
 
@@ -66,7 +58,7 @@ public class CommonIdSegmentController {
      */
     @PostMapping("/applySegment")
     public Result<Void> applySegment(@Validated @RequestBody ApplyIdSegmentRequest request) {
-        idSegmentRepository.apply(request);
+        idSegmentManageService.applySegment(request);
         return Result.success();
     }
 
@@ -75,7 +67,7 @@ public class CommonIdSegmentController {
      */
     @PostMapping("/pageGroup")
     public Result<Page<IdGroupPo>> pageGroup(@Validated @RequestBody PageGroupRequest request) {
-        return Result.success(idGroupRepository.page(request));
+        return Result.success(idSegmentManageService.pageGroup(request));
     }
 
     /**
@@ -83,7 +75,7 @@ public class CommonIdSegmentController {
      */
     @PostMapping("/pageTag")
     public Result<Page<IdTagPo>> pageTag(@Validated @RequestBody PageTagRequest request) {
-        return Result.success(idTagRepository.page(request));
+        return Result.success(idSegmentManageService.pageTag(request));
     }
 
     /**
@@ -91,7 +83,7 @@ public class CommonIdSegmentController {
      */
     @PostMapping("/pageSegment")
     public Result<Page<IdSegmentPo>> pageSegment(@Validated @RequestBody PageSegmentRequest request) {
-        return Result.success(idSegmentRepository.page(request));
+        return Result.success(idSegmentManageService.pageSegment(request));
     }
 
     @PostMapping("/takeSegment")
