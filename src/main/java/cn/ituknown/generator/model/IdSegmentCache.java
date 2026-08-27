@@ -30,9 +30,14 @@ public class IdSegmentCache {
     private static final int DEFAULT_MAX_LIMIT = 16;
 
     /**
-     * 同步兜底等待在途补充的时间上限(ms)
+     * 同步兜底补充的总时间预算(ms), 未抢到补充权时在此预算内反复再抢, 预算耗尽即返回
      */
-    private static final long SUPPLEMENT_WAIT_LIMIT_MILLIS = 100;
+    private static final long SUPPLEMENT_BUDGET_MILLIS = 200;
+
+    /**
+     * 未抢到补充权时的重试步长(ms), 在途补充落地后即可抢到下一轮
+     */
+    private static final long SUPPLEMENT_RETRY_STEP_MILLIS = 5;
 
     /**
      * 业务组
@@ -159,11 +164,12 @@ public class IdSegmentCache {
 
     /**
      * 同步兜底补充: 取号未满足结果时由当前线程立即补满缓冲。抢到补充权的线程执行清理与领段;
-     * 未抢到的说明补充已在途, 短暂等待其完成, 等待后仍未取得号则再抢一轮补充权,
-     * 避免等待结束时号被其他等待线程抢先取空而始终拿不到结果。等待有上限避免调用方无限阻塞
+     * 未抢到的说明补充已在途, 在总预算内小步等待并反复再抢, 避免号被其他等待线程抢先取空而始终拿不到结果;
+     * 预算耗尽即返回, 保证调用方不会被无限阻塞
      */
     private void supplementImmediately() {
-        for (int round = 0; round < 2; round++) {
+        long deadline = System.currentTimeMillis() + SUPPLEMENT_BUDGET_MILLIS;
+        while (System.currentTimeMillis() < deadline) {
             if (supplementing.compareAndSet(false, true)) {
                 try {
                     supplementNow();
@@ -175,14 +181,12 @@ public class IdSegmentCache {
                 return;
             }
 
-            long deadline = System.currentTimeMillis() + SUPPLEMENT_WAIT_LIMIT_MILLIS;
-            while (System.currentTimeMillis() < deadline && supplementing.get()) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
+            // 未抢到补充权, 小步等待后重试, 给在途补充留出落地时间
+            try {
+                Thread.sleep(SUPPLEMENT_RETRY_STEP_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
             }
         }
     }
