@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
@@ -35,6 +36,20 @@ public class ApplyIdSegmentRequest extends AbstractRequest {
 
     @Min(1)
     private Long step;
+
+    /**
+     * 缓存段数下限, 缺省时以库内默认值为准
+     */
+    @Min(1)
+    @Max(1000)
+    private Integer cacheMinLimit;
+
+    /**
+     * 缓存段数上限, 缺省时以库内默认值为准
+     */
+    @Min(1)
+    @Max(1000)
+    private Integer cacheMaxLimit;
 
     private String description;
 }

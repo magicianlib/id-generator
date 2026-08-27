@@ -32,6 +32,18 @@ public class IdSegmentPo implements Serializable {
     @TableField("step")
     private Long step;
 
+    /**
+     * 缓存段数下限, 低于该余量触发异步补充
+     */
+    @TableField("cache_min_limit")
+    private Integer cacheMinLimit;
+
+    /**
+     * 缓存段数上限, 防止预取过多造成浪费
+     */
+    @TableField("cache_max_limit")
+    private Integer cacheMaxLimit;
+
     @TableField("description")
     private String description;
 

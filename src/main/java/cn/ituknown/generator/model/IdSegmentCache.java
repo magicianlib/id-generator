@@ -20,14 +20,14 @@ public class IdSegmentCache {
     private static final Logger LOGGER = LoggerFactory.getLogger(IdSegmentCache.class);
 
     /**
-     * 安全号段数量下限, 低于该余量触发异步补充
+     * 缓存段数下限的引导值, 与登记时的库内默认下限保持一致, 首次领段后以该标签的行内配置覆盖
      */
-    private static final int SEGMENT_MIN_LIMIT = 3;
+    private static final int DEFAULT_MIN_LIMIT = 3;
 
     /**
-     * 号段数量上限, 防止预取过多造成浪费
+     * 缓存段数上限的引导值, 与登记时的库内默认上限保持一致, 首次领段后以该标签的行内配置覆盖
      */
-    private static final int SEGMENT_MAX_LIMIT = 16;
+    private static final int DEFAULT_MAX_LIMIT = 16;
 
     /**
      * 同步兜底等待在途补充的时间上限(ms)
@@ -45,11 +45,21 @@ public class IdSegmentCache {
     private final String bizTag;
 
     /**
-     * 号段区间申请函数, 入参为业务组与业务名
+     * 号段供给申请函数, 入参为业务组与业务名, 返回可发号区间与该标签生效的缓存水位
      */
-    private final BiFunction<String, String, Pair<Long, Long>> fetcher;
+    private final BiFunction<String, String, SegmentSupply> fetcher;
 
     private final TaskExecutor executor;
+
+    /**
+     * 生效中的缓存段数下限, 每次领段后以行内配置刷新
+     */
+    private volatile int minLimit = DEFAULT_MIN_LIMIT;
+
+    /**
+     * 生效中的缓存段数上限, 每次领段后以行内配置刷新
+     */
+    private volatile int maxLimit = DEFAULT_MAX_LIMIT;
 
     private final List<IdSegment> segments = new ArrayList<>();
 
@@ -57,7 +67,7 @@ public class IdSegmentCache {
 
     private final AtomicBoolean supplementing = new AtomicBoolean(false);
 
-    public IdSegmentCache(String bizGroup, String bizTag, BiFunction<String, String, Pair<Long, Long>> fetcher, TaskExecutor executor) {
+    public IdSegmentCache(String bizGroup, String bizTag, BiFunction<String, String, SegmentSupply> fetcher, TaskExecutor executor) {
         this.bizGroup = bizGroup;
         this.bizTag = bizTag;
         this.fetcher = fetcher;
@@ -98,7 +108,7 @@ public class IdSegmentCache {
      */
     private Long tryTake() {
         rw.readLock().lock();
-        boolean exhausted = segments.size() < SEGMENT_MIN_LIMIT;
+        boolean exhausted = segments.size() < minLimit;
         try {
             Long result = null;
             for (IdSegment segment : segments) {
@@ -125,7 +135,7 @@ public class IdSegmentCache {
     private List<Long> tryTake(int size) {
         rw.readLock().lock();
         List<Long> result = new ArrayList<>();
-        boolean exhausted = segments.size() < SEGMENT_MIN_LIMIT;
+        boolean exhausted = segments.size() < minLimit;
         try {
             int s = size;
             for (IdSegment segment : segments) {
@@ -207,13 +217,26 @@ public class IdSegmentCache {
      * 同步补充号段直至达到数量上限, 先查水位再领段, 避免并发补充时领段过量
      */
     private void syncSupplementSegment() {
-        while (segments.size() < SEGMENT_MAX_LIMIT) {
-            // 向存储层申请新号段区间
-            Pair<Long, Long> range = fetcher.apply(bizGroup, bizTag);
-            if (Objects.isNull(range)) {
+        while (segments.size() < maxLimit) {
+            // 向存储层申请新号段区间, 供给同时携带该标签生效的缓存水位
+            SegmentSupply supply = fetcher.apply(bizGroup, bizTag);
+            if (Objects.isNull(supply)) {
                 break; // 未取得区间, 结束本轮补充
             }
-            supplementSegment(range);
+            refreshWatermark(supply);
+            supplementSegment(supply.getRange());
+        }
+    }
+
+    /**
+     * 以领段供给携带的行内配置刷新生效水位, 未携带时维持原值, 支持调优后下次补段即生效
+     */
+    private void refreshWatermark(SegmentSupply supply) {
+        if (Objects.nonNull(supply.getMinLimit())) {
+            this.minLimit = supply.getMinLimit();
+        }
+        if (Objects.nonNull(supply.getMaxLimit())) {
+            this.maxLimit = supply.getMaxLimit();
         }
     }
 

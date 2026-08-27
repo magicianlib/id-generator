@@ -2,6 +2,7 @@ package cn.ituknown.generator.repository;
 
 import cn.ituknown.generator.mapper.IdSegmentMapper;
 import cn.ituknown.generator.model.IdSegmentKey;
+import cn.ituknown.generator.model.SegmentSupply;
 import cn.ituknown.generator.po.IdSegmentPo;
 import cn.ituknown.generator.request.ApplyIdSegmentRequest;
 import cn.ituknown.generator.request.PageSegmentRequest;
@@ -26,12 +27,13 @@ import java.util.stream.Collectors;
 public class IdSegmentRepository {
     private static final String FIND_SEGMENT_FAILURE_MESSAGE = "cannot find `bizGroup`: '%s', `bizTag`: '%s', please apply first.";
     private static final String FIND_TAG_FAILURE_MESSAGE = "cannot find `bizTag`: '%s' under `bizGroup`: '%s', please apply tag first.";
+    private static final String ILLEGAL_CACHE_LIMIT_MESSAGE = "illegal cache limits: min %s > max %s, please adjust.";
 
-    @Value("${id.segment.default.init_id}")
-    private Long idSegmentDefaultInitId;
+    @Value("${id.segment.init_id}")
+    private Long idSegmentInitId;
 
-    @Value("${id.segment.default.step}")
-    private Long idSegmentDefaultStep;
+    @Value("${id.segment.step}")
+    private Long idSegmentStep;
 
     @Resource
     private IdSegmentMapper idSegmentMapper;
@@ -51,14 +53,19 @@ public class IdSegmentRepository {
     }
 
     /**
-     * 申请新号段; 所属业务组与业务名必须已登记, 已存在同名号段时幂等返回, 入参缺省时以默认初始值和默认步阶补齐, 创建与更新时间由数据库生成
+     * 申请新号段; 所属业务组与业务名必须已登记, 已存在同名号段时幂等返回, 入参缺省时以默认初始值和默认步阶补齐, 缓存水位下限不得大于上限, 创建与更新时间由数据库生成
      */
     public void apply(ApplyIdSegmentRequest request) {
+        if (Objects.nonNull(request.getCacheMinLimit()) && Objects.nonNull(request.getCacheMaxLimit())
+                && request.getCacheMinLimit() > request.getCacheMaxLimit()) {
+            throw new RuntimeException(String.format(ILLEGAL_CACHE_LIMIT_MESSAGE, request.getCacheMinLimit(), request.getCacheMaxLimit()));
+        }
+
         if (Objects.isNull(request.getCurrentMaxId())) {
-            request.setCurrentMaxId(idSegmentDefaultInitId);
+            request.setCurrentMaxId(idSegmentInitId);
         }
         if (Objects.isNull(request.getStep())) {
-            request.setStep(idSegmentDefaultStep);
+            request.setStep(idSegmentStep);
         }
 
         if (Objects.nonNull(get(request.getBizGroup(), request.getBizTag()))) {
@@ -74,6 +81,8 @@ public class IdSegmentRepository {
         record.setBizTag(request.getBizTag());
         record.setCurrentMaxId(request.getCurrentMaxId());
         record.setStep(request.getStep());
+        record.setCacheMinLimit(request.getCacheMinLimit());
+        record.setCacheMaxLimit(request.getCacheMaxLimit());
         record.setDescription(request.getDescription());
 
         try {
@@ -108,9 +117,9 @@ public class IdSegmentRepository {
     }
 
     /**
-     * 领取下一档号段的可发号区间: 按已分配最大值加步阶推进, 带原值校验的更新失败时重试直至成功, 推进时显式刷新更新时间(UTC)
+     * 领取下一档号段的完整供给: 按已分配最大值加步阶推进, 带原值校验的更新失败时重试直至成功, 推进时显式刷新更新时间(UTC); 该标签行内登记的缓存水位随供给回传
      */
-    public Pair<Long, Long> nextSegmentRange(String bizGroup, String bizTag) {
+    public SegmentSupply nextSegmentRange(String bizGroup, String bizTag) {
 
         boolean update;
         long newMaxId;
@@ -133,6 +142,6 @@ public class IdSegmentRepository {
             update = idSegmentMapper.update(null, updateWrapper) > 0;
         } while (!update); // 更新失败说明被并发抢占, 重新读取后重试
 
-        return Pair.of(current.getCurrentMaxId() + 1, newMaxId);
+        return new SegmentSupply(Pair.of(current.getCurrentMaxId() + 1, newMaxId), current.getCacheMinLimit(), current.getCacheMaxLimit());
     }
 }

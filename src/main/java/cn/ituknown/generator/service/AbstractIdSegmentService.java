@@ -3,8 +3,8 @@ package cn.ituknown.generator.service;
 import cn.ituknown.generator.enums.IdSegmentTypeEnum;
 import cn.ituknown.generator.model.IdSegmentCache;
 import cn.ituknown.generator.model.IdSegmentKey;
+import cn.ituknown.generator.model.SegmentSupply;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.task.TaskExecutor;
@@ -40,9 +40,9 @@ public abstract class AbstractIdSegmentService {
     protected abstract List<IdSegmentKey> segmentList();
 
     /**
-     * 为指定业务组与业务名申请下一档号段区间
+     * 为指定业务组与业务名申请下一档号段供给, 供给含可发号区间与该标签生效的缓存水位
      */
-    protected abstract Pair<Long, Long> nextSegmentRange(String bizGroup, String bizTag);
+    protected abstract SegmentSupply nextSegmentRange(String bizGroup, String bizTag);
 
     /**
      * 线程池

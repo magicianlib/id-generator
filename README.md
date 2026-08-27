@@ -72,10 +72,14 @@ mvn spring-boot:run -Dspring-boot.run.profiles=postgresql
 | biz_tag | varchar(100) | 业务名 |
 | current_max_id | bigint unsigned | 当前已分配出去的最大 ID 值 |
 | step | bigint unsigned | 步阶，每次申请新号段的区间长度，默认 1000 |
+| cache_min_limit | bigint | 缓存段数下限，低于该余量触发异步补充，默认 3 |
+| cache_max_limit | bigint | 缓存段数上限，防止预取过多造成浪费，默认 16 |
 | description | varchar(500) | 备注说明 |
 | created_at / updated_at | datetime | 创建与更新时间（UTC），PostgreSQL 侧为 timestamptz 类型 |
 
 取号推进逻辑：新号段区间为 (已分配最大值, 已分配最大值 + 步阶]，推进成功后已分配最大值增加一个步阶，同时由应用显式刷新更新时间（UTC），不依赖数据库的自动刷新特性。
+
+缓存水位按标签配置：每个业务名的取号缓冲保有多少段号段，由该行的缓存下限与上限决定；高并发业务可调大上限减少补段频率，冷业务可调小上限避免预取浪费。调整行内值后无需重启，下一次补段即生效。
 
 ## API 说明
 
@@ -123,7 +127,7 @@ http://localhost:8080/api/common/apply-segment \
 -d '{"bizGroup":"order","bizTag":"main","currentMaxId":10000,"step":1000,"description":"订单主表ID"}'
 ```
 
-`currentMaxId` 与 `step` 可省略，缺省时使用配置的默认初始值（10000）与默认步阶（1000）。同名序列已存在时幂等返回，不会重复创建。新申请的序列会在一个同步周期（默认 10 秒）后进入发号缓存。
+`currentMaxId` 与 `step` 可省略，缺省时使用配置的默认初始值（10000）与默认步阶（1000）。`cacheMinLimit` 与 `cacheMaxLimit` 为可选的该序列缓存水位（取值 1 ~ 1000，下限不得大于上限），缺省时使用库内默认（下限 3、上限 16）。同名序列已存在时幂等返回，不会重复创建。新申请的序列会在一个同步周期（默认 10 秒）后进入发号缓存。
 
 ### 分页查询业务组
 
@@ -163,7 +167,7 @@ http://localhost:8080/api/common/page-segment \
 -d '{"current":1,"pageSize":10,"bizGroup":"order"}'
 ```
 
-返回的每条记录包含已分配最大值、步阶与备注说明，可用于管控台巡检号段水位。
+返回的每条记录包含已分配最大值、步阶、缓存水位与备注说明，可用于管控台巡检号段水位。
 
 ### 取 1 个 ID
 

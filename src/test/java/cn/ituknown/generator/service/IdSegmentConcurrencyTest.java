@@ -1,5 +1,6 @@
 package cn.ituknown.generator.service;
 
+import cn.ituknown.generator.model.SegmentSupply;
 import cn.ituknown.generator.po.IdSegmentPo;
 import cn.ituknown.generator.repository.IdGroupRepository;
 import cn.ituknown.generator.repository.IdSegmentRepository;
@@ -20,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -79,7 +81,7 @@ class IdSegmentConcurrencyTest {
         try {
             CountDownLatch ready = new CountDownLatch(threads);
             CountDownLatch start = new CountDownLatch(1);
-            List<Future<Pair<Long, Long>>> futures = new ArrayList<>();
+            List<Future<SegmentSupply>> futures = new ArrayList<>();
             for (int i = 0; i < threads; i++) {
                 futures.add(pool.submit(() -> {
                     ready.countDown();
@@ -91,11 +93,12 @@ class IdSegmentConcurrencyTest {
             start.countDown();
 
             // 单个任务带超时上限, 领取卡死即失败
-            List<Pair<Long, Long>> ranges = new ArrayList<>();
-            for (Future<Pair<Long, Long>> future : futures) {
-                ranges.add(future.get(30, TimeUnit.SECONDS));
+            List<SegmentSupply> supplies = new ArrayList<>();
+            for (Future<SegmentSupply> future : futures) {
+                supplies.add(future.get(30, TimeUnit.SECONDS));
             }
 
+            List<Pair<Long, Long>> ranges = supplies.stream().map(SegmentSupply::getRange).collect(Collectors.toList());
             assertEquals(threads, ranges.size(), "领取到的区间数量应与线程数一致");
             ranges.sort(Comparator.comparingLong(Pair::getLeft));
             assertEquals(beforeMaxId + 1, ranges.get(0).getLeft(), "首个区间应从已分配最大值之后开始");

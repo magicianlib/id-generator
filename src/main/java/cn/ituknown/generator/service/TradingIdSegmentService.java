@@ -2,7 +2,7 @@ package cn.ituknown.generator.service;
 
 import cn.ituknown.generator.enums.IdSegmentTypeEnum;
 import cn.ituknown.generator.model.IdSegmentKey;
-import org.apache.commons.lang3.tuple.Pair;
+import cn.ituknown.generator.model.SegmentSupply;
 import org.springframework.core.task.TaskExecutor;
 
 import java.util.Collections;
@@ -22,7 +22,7 @@ public class TradingIdSegmentService extends AbstractIdSegmentService {
     }
 
     @Override
-    protected Pair<Long, Long> nextSegmentRange(String bizGroup, String bizTag) {
+    protected SegmentSupply nextSegmentRange(String bizGroup, String bizTag) {
         // TODO: Depending on the business
         return null;
     }

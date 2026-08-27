@@ -2,8 +2,8 @@ package cn.ituknown.generator.service;
 
 import cn.ituknown.generator.enums.IdSegmentTypeEnum;
 import cn.ituknown.generator.model.IdSegmentKey;
+import cn.ituknown.generator.model.SegmentSupply;
 import cn.ituknown.generator.repository.IdSegmentRepository;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +30,7 @@ public class CommonIdSegmentService extends AbstractIdSegmentService {
     }
 
     @Override
-    protected Pair<Long, Long> nextSegmentRange(String bizGroup, String bizTag) {
+    protected SegmentSupply nextSegmentRange(String bizGroup, String bizTag) {
         return idSegmentRepository.nextSegmentRange(bizGroup, bizTag);
     }
 

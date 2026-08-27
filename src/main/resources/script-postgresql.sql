@@ -60,16 +60,18 @@ create unique index id_tag_biz_group__uindex
 --
 create table public.id_segment
 (
-    id             bigserial
+    id              bigserial
         constraint id_segment_pk
             primary key,
-    biz_group      text                     not null,
-    biz_tag        text                     not null,
-    current_max_id bigint      default 0    not null,
-    step           bigint      default 1000 not null,
-    description    text,
-    created_at     timestamptz default now(),
-    updated_at     timestamptz default now()
+    biz_group       text                     not null,
+    biz_tag         text                     not null,
+    current_max_id  bigint      default 0    not null,
+    step            bigint      default 1000 not null,
+    cache_min_limit bigint      default 3    not null,
+    cache_max_limit bigint      default 16   not null,
+    description     text,
+    created_at      timestamptz default now(),
+    updated_at      timestamptz default now()
 );
 
 comment on table public.id_segment is 'ID段';
@@ -77,6 +79,8 @@ comment on column public.id_segment.biz_group is '业务组';
 comment on column public.id_segment.biz_tag is '业务名';
 comment on column public.id_segment.current_max_id is '当前已分配出去的最大 ID 值';
 comment on column public.id_segment.step is '步阶';
+comment on column public.id_segment.cache_min_limit is '缓存段数下限, 低于触发异步补充';
+comment on column public.id_segment.cache_max_limit is '缓存段数上限, 防止预取浪费';
 comment on column public.id_tag.description is '备注说明';
 comment on column public.id_tag.created_at is '创建时间';
 comment on column public.id_tag.updated_at is '更新时间';
