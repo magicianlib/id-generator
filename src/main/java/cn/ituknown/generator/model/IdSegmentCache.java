@@ -144,8 +144,9 @@ public class IdSegmentCache {
         try {
             int s = size;
             for (IdSegment segment : segments) {
+                int before = result.size();
                 result.addAll(segment.take(s));
-                s = s - result.size();
+                s = s - (result.size() - before); // 剩余需求只扣减本轮实际取到的数量
                 if (segment.isExhausted()) {
                     exhausted = true;
                 }

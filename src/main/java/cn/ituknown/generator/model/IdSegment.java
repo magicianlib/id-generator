@@ -34,10 +34,10 @@ public class IdSegment {
     }
 
     /**
-     * 批量获取指定数量的序列
+     * 批量获取指定数量的序列, 需求量非正时不受理, 防止消费进度被负向回拨
      */
     public List<Long> take(int size) {
-        if (isExhausted()) {
+        if (size <= 0 || isExhausted()) {
             return Collections.emptyList();
         }
 
