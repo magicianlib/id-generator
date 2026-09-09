@@ -21,4 +21,4 @@ jobs:
           git remote add gitlab https://oauth2:${{ env.GITLAB_TOKEN }}@gitlab.com/magicianlib/id-generator.git
 
           # 将 main 分支 push 到 gitlab
-          git push gitlab main --force
+          git push gitlab main
